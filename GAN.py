@@ -1,10 +1,10 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Spyder Editor
+Created on Wed Oct 21 13:57:20 2020
 
-This is a temporary script file.
+@author: ajv012
 """
-
 # numpy and matplotlib
 from numpy import asarray, vstack, savez_compressed, load, zeros, ones 
 from numpy.random import randint
@@ -25,30 +25,20 @@ from tensorflow.keras.layers import Conv2DTranspose, LeakyReLU, Activation, Conc
 from HelperFunctions import *
 from Discriminator import *
 from Generator import *
-from GAN import *
 
-print('Done with imports')
-
-# training dataset directory 
-# need to load data only once, which is already done
-load_dataset(False)
-
-# visualize some example data
-visualize_example_data()
-
-# load image data
-dataset = load_real_samples('maps_256.npz')
-print('Loaded', dataset[0].shape, dataset[1].shape)
-
-# define input shape based on the loaded dataset
-image_shape = dataset[0].shape[1:]
-
-# define the models
-d_model = define_discriminator(image_shape)
-g_model = define_generator(image_shape)
-
-# define the composite model
-gan_model = define_gan(g_model, d_model, image_shape)
-
-# train model
-train(d_model, g_model, gan_model, dataset)
+# use discriminator and generator netowrks to define a GAN 
+def define_gan(g_model, d_model, image_shape):
+  # make weights in the discriminator not trainable
+  d_model.trainable = False
+  # define the source image
+  in_src = Input(shape=image_shape)
+  # connect the source image to the generator input
+  gen_out = g_model(in_src)
+  # connect the source input and generator output to the discriminator input
+  dis_out = d_model([in_src, gen_out])
+  # src image as input, generated image and classification output
+  model = Model(in_src, [dis_out, gen_out])
+  # compile model
+  opt = Adam(lr=0.0002, beta_1=0.5)
+  model.compile(loss=['binary_crossentropy', 'mae'], optimizer=opt, loss_weights=[1,100])
+  return model
